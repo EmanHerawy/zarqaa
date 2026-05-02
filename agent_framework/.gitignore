@@ -1,0 +1,4 @@
+.env
+.openclaw/
+.mcporter/
+*.bak

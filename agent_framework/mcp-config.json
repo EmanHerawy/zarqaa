@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "_placeholder": {
+      "_comment": "Zarqa MCP server goes here once built. See README for the pattern.",
+      "_example": {
+        "command": "node",
+        "args": ["/home/node/zarqa-mcp/dist/index.js"],
+        "env": {
+          "ETHERSCAN_API_KEY": "",
+          "ALCHEMY_API_KEY": ""
+        },
+        "transport": "stdio",
+        "description": "Zarqa security pipeline: path resolution, contract inspection, ownership mapping, audit verification, exploit scanning, MEV analysis"
+      }
+    }
+  }
+}

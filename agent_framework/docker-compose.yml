@@ -1,0 +1,52 @@
+services:
+  # ==========================================================================
+  # OpenClaw Gateway — AI agent connecting to messaging platforms and MCP tools
+  # Built from source: run ./docker-setup.sh to build openclaw:local first.
+  # ==========================================================================
+  openclaw-gateway:
+    image: openclaw:local
+    container_name: zarqa-openclaw-gateway
+    # mcporter is added to the entrypoint once the Zarqa MCP server is built.
+    # Until then, use the default docker-entrypoint.sh from the image.
+    command: ["openclaw.mjs", "gateway", "--verbose"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:${OPENCLAW_GATEWAY_PORT:-18789}"
+    volumes:
+      - ./.openclaw:/home/node/.openclaw
+      # Zarqa MCP server — uncomment once src/mcp-server is built:
+      # - ../src:/home/node/zarqa-mcp:ro
+      # - ./.mcporter:/home/node/.mcporter
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
+      - ALCHEMY_API_KEY=${ALCHEMY_API_KEY:-}
+    restart: unless-stopped
+
+  # ==========================================================================
+  # OpenClaw CLI — for channel setup and config after gateway is running
+  # Usage: docker compose run --rm --profile cli openclaw-cli <command>
+  # ==========================================================================
+  openclaw-cli:
+    image: openclaw:local
+    container_name: zarqa-openclaw-cli
+    network_mode: "service:openclaw-gateway"
+    volumes:
+      - ./.openclaw:/home/node/.openclaw
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    entrypoint: ["openclaw.mjs"]
+    profiles:
+      - cli
+    depends_on:
+      - openclaw-gateway
