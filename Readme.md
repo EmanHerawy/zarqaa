@@ -2,6 +2,7 @@
 
 > Zarqa sees the hidden risks. You decide whether to listen.
 
+![Zarqa](docs/intro.png)
 ---
 
 ## The Story of Zarqa in history
