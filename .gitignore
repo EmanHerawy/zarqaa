@@ -1,1 +1,7 @@
 .claude
+.gstack/
+.DS_Store
+.env
+.openclaw
+.mcporter
+target
