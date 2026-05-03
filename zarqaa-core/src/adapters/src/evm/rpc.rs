@@ -109,3 +109,69 @@ impl EvmRpcClient {
         Ok(Some(format!("{impl_addr:#x}")))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Fixtures are real traces captured from Alchemy, embedded at compile time.
+    // No network calls — these tests always run offline.
+    const AAVE_TRACE: &str = include_str!("../../tests/fixtures/aave_trace.json");
+    const CCIP_TRACE: &str = include_str!("../../tests/fixtures/ccip_trace.json");
+
+    fn parse_and_collect(trace_json: &str) -> Vec<String> {
+        let root: CallFrame = serde_json::from_str(trace_json).expect("fixture parse failed");
+        let mut seen = std::collections::HashSet::new();
+        let mut out = Vec::new();
+        collect_addresses(&root, &mut seen, &mut out);
+        out
+    }
+
+    #[test]
+    fn aave_borrow_tx_returns_10_legs() {
+        let legs = parse_and_collect(AAVE_TRACE);
+        assert_eq!(legs.len(), 10, "expected 10 legs, got {}: {:?}", legs.len(), legs);
+    }
+
+    #[test]
+    fn aave_borrow_tx_includes_proxy_and_impl() {
+        let legs = parse_and_collect(AAVE_TRACE);
+        // Proxy
+        assert!(legs.contains(&"0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2".to_string()),
+            "missing Aave pool proxy");
+        // Its implementation — trace follows delegatecall
+        assert!(legs.contains(&"0x8147b99df7672a21809c9093e6f6ce1a60f119bd".to_string()),
+            "missing PoolInstance impl");
+    }
+
+    #[test]
+    fn aave_borrow_tx_includes_wbtc() {
+        let legs = parse_and_collect(AAVE_TRACE);
+        assert!(legs.contains(&"0x2260fac5e5542a773aa44fbcfedf7c193bc2c599".to_string()),
+            "missing WBTC token contract");
+    }
+
+    #[test]
+    fn ccip_tx_returns_15_legs() {
+        let legs = parse_and_collect(CCIP_TRACE);
+        assert_eq!(legs.len(), 15, "expected 15 legs, got {}: {:?}", legs.len(), legs);
+    }
+
+    #[test]
+    fn ccip_tx_includes_router_and_onramp() {
+        let legs = parse_and_collect(CCIP_TRACE);
+        assert!(legs.contains(&"0x80226fc0ee2b096224eeac085bb9a8cba1146f7d".to_string()),
+            "missing CCIP Router");
+        assert!(legs.contains(&"0x913814782144864e523c3fdb78e3ca25d2c2aeca".to_string()),
+            "missing OnRamp");
+    }
+
+    #[test]
+    fn no_duplicate_addresses() {
+        for (name, trace) in [("aave", AAVE_TRACE), ("ccip", CCIP_TRACE)] {
+            let legs = parse_and_collect(trace);
+            let unique: std::collections::HashSet<_> = legs.iter().collect();
+            assert_eq!(legs.len(), unique.len(), "{name}: found duplicate addresses in {:?}", legs);
+        }
+    }
+}
