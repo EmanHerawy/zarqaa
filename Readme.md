@@ -1,25 +1,25 @@
-# Zarqa — زرقاء
+# Zarqaa — زرقاء
 
-> Zarqa sees the hidden risks. You decide whether to listen.
+> Zarqaa sees the hidden risks. You decide whether to listen.
 
-![Zarqa](docs/intro.png)
+![Zarqaa](docs/intro.png)
 ---
 
-## The Story of Zarqa in history
+## The Story of Zarqaa in history
 
-In ancient Arabia, there was a woman named Zarqa al-Yamama — زرقاء اليمامة — of the Jadis tribe. She was known for eyesight so sharp she could see a rider from three days' distance. When an enemy army approached, camouflaged behind cut trees, she was the only one who saw them. She warned her tribe. They dismissed her.
+In ancient Arabia, there was a woman named Zarqaa al-Yamama — زرقاء اليمامة — of the Jadis tribe. She was known for eyesight so sharp she could see a rider from three days' distance. When an enemy army approached, camouflaged behind cut trees, she was the only one who saw them. She warned her tribe. They dismissed her.
 
 The army arrived. The tribe fell.
 
 We named this tool after her because she is the original early warning system — and because the story of being right, being ignored, and watching the damage happen is one that everyone in Web3 security knows by heart.
 
-Zarqa brings that same foresight to Web3. It looks past the surface of a transaction to reveal the "hidden soldiers"—compromised proxies, unverified owners, and stale audits—before they can strike your assets.
+Zarqaa brings that same foresight to Web3. It looks past the surface of a transaction to reveal the "hidden soldiers"—compromised proxies, unverified owners, and stale audits—before they can strike your assets.
 
 ---
 
-## What is Zarqa
+## What is Zarqaa
 
-Zarqa is a transaction-time security intelligence layer for Web3.
+Zarqaa is a transaction-time security intelligence layer for Web3.
 
 It accepts a transaction in two states — one you are about to sign, or one that has already been submitted. In both cases it resolves the full execution path, inspects every contract your transaction will touch, and returns a per-component security report. Audit status. Ownership structure. Proxy upgrade history. Exploit reports. MEV exposure. Sourced, cited, and streamed to you in real time.
 
@@ -41,14 +41,14 @@ The canonical example: a user bridges 50,000 USDC via a LayerZero-based bridge. 
 
 All of this information exists on-chain or in public data sources. It is simply not aggregated at the point of decision.
 
-That is the problem Zarqa is built to solve — and only this problem.
+That is the problem Zarqaa is built to solve — and only this problem.
 ---
 
 ## The flight path model
 
 Think of a DeFi transaction like a flight with multiple legs. A swap might route through an aggregator router, a liquidity pool, a price oracle, and a token contract. Each leg is a separate smart contract. Each one carries its own risk profile.
 
-Zarqa resolves every leg, then runs a security check on each one:
+Zarqaa resolves every leg, then runs a security check on each one:
 
 - Is the source code publicly verified?
 - When was it last audited — and does that audit post-date the last proxy upgrade?
@@ -58,13 +58,13 @@ Zarqa resolves every leg, then runs a security check on each one:
 
 The result is a per-leg security card — green, amber, red, or unverified — plus an overall route verdict.
 
-**If Zarqa cannot assess a component for any reason, it says so explicitly with a reason code. Silence is never treated as safe.**
+**If Zarqaa cannot assess a component for any reason, it says so explicitly with a reason code. Silence is never treated as safe.**
 
 ---
 
 ## How it works
 
-Zarqa works in two ways. Whether you are inspecting a route before you execute it, or examining a transaction that has already been submitted or confirmed — the analysis pipeline is identical. Same depth, same data sources, same trust model, same output schema.
+Zarqaa works in two ways. Whether you are inspecting a route before you execute it, or examining a transaction that has already been submitted or confirmed — the analysis pipeline is identical. Same depth, same data sources, same trust model, same output schema.
 
 ---
 
@@ -73,7 +73,7 @@ Zarqa works in two ways. Whether you are inspecting a route before you execute i
 
 You have a route in mind. A swap, a bridge, a deposit. You have not signed yet.
 
-Submit the sender address, target contract, and calldata — or a higher-level intent. Zarqa resolves every contract in the execution path and runs the full security check pipeline on each one.
+Submit the sender address, target contract, and calldata — or a higher-level intent. Zarqaa resolves every contract in the execution path and runs the full security check pipeline on each one.
 
 **Every finding is prospective and actionable. You can still walk away.**
 
@@ -88,7 +88,7 @@ This is the highest-value flow. Use it to inspect a route before committing to i
 
 The transaction already exists — submitted to the mempool, or confirmed on-chain.
 
-Submit the transaction hash. Zarqa resolves it via RPC, decodes the full execution trace, extracts the call graph, and runs the same analysis pipeline.
+Submit the transaction hash. Zarqaa resolves it via RPC, decodes the full execution trace, extracts the call graph, and runs the same analysis pipeline.
 
 
 **Who uses this:** Security researchers investigating incidents, DAO treasuries reviewing past transactions, compliance teams building audit trails, anyone who received a transaction hash and wants to understand what it did.
