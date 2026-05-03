@@ -33,6 +33,20 @@ impl Verdict {
     }
 }
 
+// Security details specific to bridge/oracle infrastructure legs.
+// All fields are mocked for now — Phase 2 reads them on-chain.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BridgeInfo {
+    pub protocol: String,
+    pub dvn_count: Option<u32>,
+    pub relayer_type: String,            // "contract" | "eoa" | "don" | "unknown"
+    pub required_confirmations: Option<u32>,
+    pub centralization_risk: String,     // "low" | "medium" | "high"
+    pub last_incident: Option<String>,   // e.g. "2022-08-02: Nomad exploit ($190M)"
+    pub destination_chain: Option<String>,
+    pub is_mocked: bool,                 // always true until Phase 2 on-chain reads
+}
+
 // Everything we know about one contract in the transaction path.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LegReport {
@@ -42,8 +56,9 @@ pub struct LegReport {
     pub source_verified: bool,
     pub is_proxy: bool,
     pub proxy_implementation: Option<String>,
-    pub infra_kind: Option<String>,  // e.g. "LayerZero V2 EndpointV2"
-    pub notes: Vec<String>,          // human-readable findings for this leg
+    pub infra_kind: Option<String>,      // e.g. "Chainlink CCIP Router"
+    pub bridge_info: Option<BridgeInfo>, // present when infra_kind is a bridge/oracle
+    pub notes: Vec<String>,
 }
 
 // The complete report returned to the user.
@@ -79,6 +94,7 @@ mod tests {
             is_proxy: false,
             proxy_implementation: None,
             infra_kind: None,
+            bridge_info: None,
             notes: vec![],
         }
     }

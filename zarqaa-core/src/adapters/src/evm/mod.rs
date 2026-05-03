@@ -72,14 +72,35 @@ impl EvmAdapter {
                 }
             };
 
-        // --- Stage 2c: known infra detection ---
+        // --- Stage 2c: known infra detection + bridge security card ---
         let infra_kind = infra::known_infra_label(&self.chain_id, address);
+        let bridge_info = infra::bridge_mock_info(&self.chain_id, address);
+
         if let Some(label) = &infra_kind {
             notes.push(format!("Known infrastructure: {label}"));
-            // Flag known bridges/oracles as Amber — they're high-value targets
-            // and worth explicit attention even when source is verified
             if verdict == Verdict::Green {
                 verdict = Verdict::Amber;
+            }
+        }
+
+        if let Some(info) = &bridge_info {
+            notes.push(format!("Bridge protocol: {} [MOCK DATA]", info.protocol));
+            notes.push(format!(
+                "Centralization risk: {} | DVNs: {} | Relayer: {}",
+                info.centralization_risk,
+                info.dvn_count.map(|n| n.to_string()).unwrap_or_else(|| "unknown".into()),
+                info.relayer_type,
+            ));
+            if let Some(inc) = &info.last_incident {
+                notes.push(format!("⚠ Past incident: {inc}"));
+                if verdict != Verdict::Red {
+                    verdict = Verdict::Amber;
+                }
+            }
+            if let Some(dest) = &info.destination_chain {
+                notes.push(format!(
+                    "Cross-chain destination: {dest} [MOCK — destination leg analysis not yet implemented]"
+                ));
             }
         }
 
@@ -91,6 +112,7 @@ impl EvmAdapter {
             is_proxy,
             proxy_implementation,
             infra_kind,
+            bridge_info,
             notes,
         }
     }

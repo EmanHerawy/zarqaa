@@ -57,6 +57,23 @@ async fn main() {
         for note in &leg.notes {
             println!("       • {}", note);
         }
+        if let Some(bridge) = &leg.bridge_info {
+            println!("       ┌─ Bridge Security Card ─────────────────────");
+            println!("       │  Protocol    : {}", bridge.protocol);
+            println!("       │  Risk        : {}", bridge.centralization_risk);
+            println!("       │  DVNs        : {}", bridge.dvn_count.map(|n| n.to_string()).unwrap_or_else(|| "unknown".into()));
+            println!("       │  Relayer     : {}", bridge.relayer_type);
+            if let Some(confs) = bridge.required_confirmations {
+                println!("       │  Confirmations: {confs}");
+            }
+            if let Some(inc) = &bridge.last_incident {
+                println!("       │  ⚠ Incident : {inc}");
+            }
+            if let Some(dest) = &bridge.destination_chain {
+                println!("       │  Destination : {dest}");
+            }
+            println!("       └────────────────────────────────────────────");
+        }
         println!();
     }
 }
