@@ -93,3 +93,27 @@ Submit the transaction hash. Zarqaa resolves it via RPC, decodes the full execut
 
 **Who uses this:** Security researchers investigating incidents, DAO treasuries reviewing past transactions, compliance teams building audit trails, anyone who received a transaction hash and wants to understand what it did.
 
+## flow 
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    YOUR MACHINE                                              │
+│                                                                                              │
+│  ┌──────────────────────────────┐              ┌──────────────────────────────────────────┐ │
+│  │     NODE A (Zarqaa Service)  │              │      NODE B (OpenClaw Trading Agent)     │ │
+│  │  ──────────────────────────  │              │  ──────────────────────────────────────  │ │
+│  │  Port 9002 (AXL HTTP API)    │              │  Port 9012 (AXL HTTP API)                │ │
+│  │  Port 7000 (P2P TCP)         │◄── mesh ───►│  Port 7001 (P2P TCP)                     │ │
+│  │  Port 8080 (Zarqaa Gateway)  │              │                                          │ │
+│  │  Port 9003 (MCP Router)      │              │  [OpenClaw Agent]                        │ │
+│  │                              │              │       ↓                                  │ │
+│  │  [Zarqaa Gateway]            │              │  [Safety Guard Layer] ←── YOU BUILD THIS │ │
+│  │    ├── /analyze (REST)       │              │       ↓                                  │ │
+│  │    ├── /analyze-intent (REST)│              │  [OpenClaw Core]                         │ │
+│  │         ↓                    │              │  [Trading Execution]                     │ │
+│  │  [MCP Router :9003]          │              │                                          │ │
+│  │       ↓                      │              │                                          │ │
+│  │  [AXL Node :9002]            │              │                                          │ │
+│  └──────────────────────────────┘              └──────────────────────────────────────────┘ │
+│                                                                                              │
+│  Flow: OpenClaw → Safety Guard → AXL Node B ──mesh──► AXL Node A → MCP Router → Zarqaa    │
+│                              (checks tx before execution)                                    │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘

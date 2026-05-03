@@ -18,7 +18,7 @@ Reads peer config from TOOLS.md or env vars:
 import argparse, json, os, sys, re
 import urllib.request, urllib.error
 
-AXL_URL   = os.getenv("ZARQA_AXL_URL", "http://127.0.0.1:9012")
+AXL_URL   = os.getenv("ZARQA_AXL_URL", "http://host.docker.internal:9012")
 PEER_ID   = os.getenv("ZARQA_NODE_A_PEER_ID", "")
 SERVICE   = "zarqa"
 TIMEOUT   = 90  # seconds

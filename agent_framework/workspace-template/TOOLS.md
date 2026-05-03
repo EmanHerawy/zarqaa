@@ -6,7 +6,7 @@
 - **Public Key:** `5bcb2a071ed712d23bd97ce15b1aec892dd195fa18e67b061c22c2edfa45fd85`
 - **IPv6:** `201:90d3:57e3:84a3:b4b7:109a:c7a:9394`
 - **HTTP API:** `http://127.0.0.1:9002`
-- **P2P Port:** `7000`
+- **P2P Port:** `7100`
 - **MCP Router:** `http://127.0.0.1:9003`
 - **Zarqaa Gateway:** `http://127.0.0.1:8080`
 - **MCP endpoint:** `http://127.0.0.1:8080/mcp`
@@ -15,7 +15,7 @@
 - **Public Key:** `d1c50ffa17bb8ea243c5a03f2c18a235dc6a5252e95ac9a9df11c9a5785ae175`
 - **IPv6:** `200:5c75:e00b:d088:e2bb:7874:bf81:a7ce`
 - **HTTP API:** `http://127.0.0.1:9012`
-- **P2P Port:** `7001`
+- **P2P Port:** `7101`
 
 ## Safety Guard
 

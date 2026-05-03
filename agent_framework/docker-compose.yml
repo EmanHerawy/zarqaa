@@ -6,18 +6,13 @@ services:
   openclaw-gateway:
     image: openclaw:local
     container_name: zarqa-openclaw-gateway
-    # mcporter wraps the entrypoint and injects MCP tools (Zarqa via AXL)
-    command: ["mcporter", "run", "--", "openclaw.mjs", "gateway", "--verbose"]
+    command: ["openclaw.mjs", "gateway", "--verbose"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:${OPENCLAW_GATEWAY_PORT:-18789}"
     volumes:
       - ./.openclaw:/home/node/.openclaw
-      # Zarqa AXL bridge — stdio MCP server that routes calls through the mesh
-      - ./zarqa_axl_bridge.mjs:/home/node/zarqa-bridge/zarqa_axl_bridge.mjs:ro
-      # mcporter config — registers the zarqa MCP server
-      - ./.mcporter:/home/node/.mcporter:ro
     environment:
       - NODE_ENV=production
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
@@ -28,8 +23,6 @@ services:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
       - ALCHEMY_API_KEY=${ALCHEMY_API_KEY:-}
-      # Node A peer ID — get this by running: curl http://localhost:9002/topology | jq '.self'
-      - ZARQA_NODE_A_PEER_ID=${ZARQA_NODE_A_PEER_ID:-}
     restart: unless-stopped
 
   # ==========================================================================
