@@ -29,8 +29,10 @@ export default function ScannerResults({ results, onBack }: ScannerResultsProps)
       {/* Verdict Banner */}
       <AnimatedVerdictBanner verdict={results.route_verdict} txHash={results.tx_hash} />
 
-      {/* MEV Risk (for intent) */}
-      {results.mev_risk && (
+      {/* MEV Risk — intent-based only, medium/high only */}
+      {results.intent_resolution &&
+        results.mev_risk &&
+        (results.mev_risk.risk_level === 'medium' || results.mev_risk.risk_level === 'high') && (
         <MEVRiskCard mevRisk={results.mev_risk} />
       )}
 

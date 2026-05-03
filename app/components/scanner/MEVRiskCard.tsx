@@ -7,89 +7,104 @@ interface MEVRiskCardProps {
 }
 
 export default function MEVRiskCard({ mevRisk }: MEVRiskCardProps) {
-  const isHighRisk = mevRisk.risk_level === 'high'
+  const level = mevRisk.risk_level // 'low' | 'medium' | 'high'
+  const isHigh = level === 'high'
+  const isMedium = level === 'medium'
+
+  // Don't render for low/none — caller should also gate on this,
+  // but guard here too so the component is self-contained.
+  if (!isHigh && !isMedium) return null
 
   return (
-    <Card className={`border-2 ${isHighRisk ? 'border-rose-600 bg-rose-900/20' : 'border-amber-600 bg-amber-900/20'} p-6 relative overflow-hidden`}>
-      {/* MEV Threat Radar (for high-risk) */}
-      {isHighRisk && (
-        <div className="absolute top-4 right-4 w-20 h-20">
+    <Card
+      className={`p-6 relative overflow-hidden border ${
+        isHigh
+          ? 'border-rose-700/60 bg-rose-900/15'
+          : 'border-amber-700/40 bg-amber-900/10'
+      }`}
+    >
+      {/* Animated radar — high risk only */}
+      {isHigh && (
+        <div className="absolute top-4 right-4 w-16 h-16 opacity-40">
           <svg className="w-full h-full animate-pulse" viewBox="0 0 100 100">
-            {/* Radar circles */}
-            <circle cx="50" cy="50" r="45" fill="none" stroke="#f87171" strokeWidth="0.5" opacity="0.3" />
-            <circle cx="50" cy="50" r="30" fill="none" stroke="#f87171" strokeWidth="0.5" opacity="0.5" />
-            <circle cx="50" cy="50" r="15" fill="none" stroke="#f87171" strokeWidth="0.5" opacity="0.7" />
-            {/* Center ping */}
-            <circle cx="50" cy="50" r="4" fill="#f87171" />
-            {/* Radar sweep lines */}
-            <line x1="50" y1="50" x2="50" y2="10" stroke="#f87171" strokeWidth="0.5" opacity="0.6" />
-            <line x1="50" y1="50" x2="85" y2="50" stroke="#f87171" strokeWidth="0.5" opacity="0.6" />
-            <line x1="50" y1="50" x2="50" y2="90" stroke="#f87171" strokeWidth="0.5" opacity="0.6" />
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#f87171" strokeWidth="0.8" opacity="0.3" />
+            <circle cx="50" cy="50" r="28" fill="none" stroke="#f87171" strokeWidth="0.8" opacity="0.5" />
+            <circle cx="50" cy="50" r="12" fill="none" stroke="#f87171" strokeWidth="0.8" opacity="0.7" />
+            <circle cx="50" cy="50" r="3" fill="#f87171" />
           </svg>
         </div>
       )}
 
       <div className="space-y-4 relative z-10">
+        {/* Header */}
         <div className="flex items-start gap-3">
-          {isHighRisk ? (
-            <Radar className={`w-6 h-6 flex-shrink-0 mt-0.5 ${isHighRisk ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
-          ) : (
-            <AlertTriangle className={`w-6 h-6 flex-shrink-0 mt-0.5 ${isHighRisk ? 'text-rose-400' : 'text-amber-400'}`} />
-          )}
+          {isHigh
+            ? <Radar className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-400 animate-pulse" />
+            : <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-400" />
+          }
           <div>
-            <h3 className={`font-playfair font-bold text-lg ${isHighRisk ? 'text-rose-200' : 'text-amber-200'}`}>
-              MEV Risk: {mevRisk.risk_level.toUpperCase()}
+            <h3 className={`font-semibold text-base ${isHigh ? 'text-rose-300' : 'text-amber-300'}`}>
+              {isHigh ? 'High MEV Exposure' : 'Potential MEV Exposure'}
             </h3>
-            <p className="text-slate-300 text-sm mt-2">
+            <p className="text-slate-400 text-sm mt-1">
               {mevRisk.summary}
             </p>
           </div>
         </div>
 
+        {/* Mempool context note — intent-based pre-sign context */}
+        <p className="text-slate-400 text-sm border-l-2 border-slate-600 pl-3 italic">
+          {isHigh
+            ? 'This transaction is likely to attract sandwich bots if broadcast to the public mempool. Whether it gets attacked depends on which RPC endpoint you use.'
+            : 'This might happen depending on which mempool you route through. Public RPC endpoints expose your transaction to searchers before it lands on-chain.'
+          }
+        </p>
+
         {/* Signals */}
         {mevRisk.signals.length > 0 && (
           <div>
-            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Detected Signals</p>
-            <div className="space-y-1">
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1.5">Detected signals</p>
+            <div className="flex flex-wrap gap-2">
               {mevRisk.signals.map((signal, idx) => (
-                <p key={idx} className="text-slate-300 text-sm">
-                  • {signal}
-                </p>
+                <span
+                  key={idx}
+                  className={`text-xs px-2 py-0.5 rounded-full border ${
+                    isHigh
+                      ? 'border-rose-700/50 bg-rose-900/20 text-rose-300'
+                      : 'border-amber-700/40 bg-amber-900/15 text-amber-300'
+                  }`}
+                >
+                  {signal}
+                </span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Recommendation */}
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">Recommendation</p>
-          <p className="text-slate-300 text-sm">
-            {mevRisk.recommendation}
-          </p>
-          
-          {/* Extract and render links from recommendation */}
+        {/* Recommendation + links */}
+        <div className="pt-3 border-t border-slate-800">
+          <p className="text-slate-300 text-sm">{mevRisk.recommendation}</p>
+
           {mevRisk.recommendation.includes('http') && (
-            <div className="flex gap-3 mt-3">
-              {mevRisk.recommendation.includes('flashbots') && (
-                <a 
-                  href="https://protect.flashbots.net" 
-                  target="_blank" 
+            <div className="flex gap-4 mt-3">
+              {mevRisk.recommendation.toLowerCase().includes('flashbots') && (
+                <a
+                  href="https://protect.flashbots.net"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 text-sm"
                 >
-                  Flashbots Protect
-                  <ExternalLink className="w-3 h-3" />
+                  Flashbots Protect <ExternalLink className="w-3 h-3" />
                 </a>
               )}
-              {mevRisk.recommendation.includes('mevblocker') && (
-                <a 
-                  href="https://mevblocker.io" 
-                  target="_blank" 
+              {mevRisk.recommendation.toLowerCase().includes('mevblocker') && (
+                <a
+                  href="https://mevblocker.io"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 text-sm"
                 >
-                  MEV Blocker
-                  <ExternalLink className="w-3 h-3" />
+                  MEV Blocker <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
