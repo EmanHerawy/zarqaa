@@ -1,0 +1,14 @@
+[package]
+name = "zarqa"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "zarqa"
+path = "src/main.rs"
+
+[dependencies]
+zarqa-types    = { path = "../types" }
+zarqa-adapters = { path = "../adapters" }
+tokio          = { workspace = true }
+serde_json     = { workspace = true }

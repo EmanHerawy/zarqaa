@@ -1392,6 +1392,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4724,12 +4730,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "zarqa"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tokio",
+ "zarqa-adapters",
+ "zarqa-types",
+]
+
+[[package]]
 name = "zarqa-adapters"
 version = "0.1.0"
 dependencies = [
  "alloy",
  "anyhow",
  "async-trait",
+ "dotenvy",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

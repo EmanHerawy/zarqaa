@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "src/types",
     "src/adapters",
+    "src/main",
 ]
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }
