@@ -97,9 +97,11 @@ impl EvmAdapter {
                     verdict = Verdict::Amber;
                 }
             }
-            if let Some(dest) = &info.destination_chain {
+            if info.destination_chain.is_some() {
                 notes.push(format!(
-                    "Cross-chain destination: {dest} [MOCK — destination leg analysis not yet implemented]"
+                    "Cross-chain destination tracking not yet supported for {} \
+                     (reason: CROSS_CHAIN_UNSUPPORTED)",
+                    info.protocol
                 ));
             }
         }
