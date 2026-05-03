@@ -1,19 +1,16 @@
 use axum::{extract::State, http::StatusCode, Json};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
+use zarqaa_adapters::mev;
 use zarqaa_types::report::RouteReport;
 
 use crate::state::SharedState;
 
-#[derive(Deserialize)]
-pub struct AnalyzeRequest {
-    pub tx_hash: String,
-    pub chain: String,
-}
+// ── Shared response envelope ───────────────────────────────────────────────
 
 #[derive(Serialize)]
 #[serde(untagged)]
-pub enum AnalyzeResponse {
+pub enum ApiResponse {
     Ok(RouteReport),
     Err(ApiError),
 }
@@ -24,21 +21,26 @@ pub struct ApiError {
     pub code: String,
 }
 
+fn err(status: StatusCode, error: impl Into<String>, code: &str) -> (StatusCode, Json<ApiResponse>) {
+    (status, Json(ApiResponse::Err(ApiError { error: error.into(), code: code.into() })))
+}
+
+// ── POST /analyze — tx hash path ──────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct AnalyzeRequest {
+    pub tx_hash: String,
+    pub chain: String,
+}
+
 pub async fn analyze(
     State(state): State<SharedState>,
     Json(req): Json<AnalyzeRequest>,
-) -> (StatusCode, Json<AnalyzeResponse>) {
+) -> (StatusCode, Json<ApiResponse>) {
     let adapter = match state.adapters.get(&req.chain) {
         Some(a) => a,
-        None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(AnalyzeResponse::Err(ApiError {
-                    error: format!("Chain '{}' is not configured on this instance", req.chain),
-                    code: "UNSUPPORTED_CHAIN".to_string(),
-                })),
-            );
-        }
+        None => return err(StatusCode::BAD_REQUEST,
+            format!("Chain '{}' not configured", req.chain), "UNSUPPORTED_CHAIN"),
     };
 
     tracing::info!(tx_hash = %req.tx_hash, chain = %req.chain, "resolving legs");
@@ -47,37 +49,88 @@ pub async fn analyze(
         Ok(a) => a,
         Err(e) => {
             tracing::warn!(tx_hash = %req.tx_hash, error = %e, "leg resolution failed");
-            return (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                Json(AnalyzeResponse::Err(ApiError {
-                    error: e.to_string(),
-                    code: "UNRESOLVABLE_TX_HASH".to_string(),
-                })),
-            );
+            return err(StatusCode::UNPROCESSABLE_ENTITY, e.to_string(), "UNRESOLVABLE_TX_HASH");
         }
     };
 
-    tracing::info!(tx_hash = %req.tx_hash, legs = addresses.len(), "analyzing legs concurrently");
-
-    // Analyze all legs in parallel — each leg makes 3 network calls (Etherscan,
-    // proxy slot read, feeds), so sequential would be legs × 3 serial calls.
-    let legs = join_all(addresses.iter().map(|addr| adapter.analyze_leg(addr))).await;
-
+    tracing::info!(tx_hash = %req.tx_hash, legs = addresses.len(), "analyzing concurrently");
+    let legs = join_all(addresses.iter().map(|a| adapter.analyze_leg(a))).await;
     let route_verdict = RouteReport::compute_verdict(&legs);
 
-    tracing::info!(
-        tx_hash = %req.tx_hash,
-        legs = legs.len(),
-        verdict = ?route_verdict,
-        "analysis complete"
-    );
+    // MEV risk on tx-hash path — heuristic based on legs, no value context
+    let mev_risk = Some(mev::assess(&legs, None));
 
-    let report = RouteReport {
-        tx_hash: req.tx_hash,
+    tracing::info!(tx_hash = %req.tx_hash, verdict = ?route_verdict, "done");
+
+    (StatusCode::OK, Json(ApiResponse::Ok(RouteReport {
+        tx_hash: Some(req.tx_hash),
         chain: req.chain,
         route_verdict,
         legs,
+        mev_risk,
+        intent_resolution: None,
+    })))
+}
+
+// ── POST /analyze-intent — pre-sign intent path ───────────────────────────
+
+#[derive(Deserialize)]
+pub struct IntentRequest {
+    // Accept either a plain string or a structured object — serde handles both
+    // via untagged enum. The intent module normalizes both forms via Claude.
+    pub intent: serde_json::Value,
+    pub chain: Option<String>,
+}
+
+pub async fn analyze_intent(
+    State(state): State<SharedState>,
+    Json(req): Json<IntentRequest>,
+) -> (StatusCode, Json<ApiResponse>) {
+    let api_key = match &state.anthropic_key {
+        Some(k) => k.clone(),
+        None => return err(StatusCode::SERVICE_UNAVAILABLE,
+            "ANTHROPIC_API_KEY not configured on this instance", "LLM_UNAVAILABLE"),
     };
 
-    (StatusCode::OK, Json(AnalyzeResponse::Ok(report)))
+    // Convert intent value to string for the normalizer
+    let raw_input = match &req.intent {
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    };
+
+    let chain = req.chain.as_deref().unwrap_or("ethereum").to_string();
+
+    let adapter = match state.adapters.get(&chain) {
+        Some(a) => a,
+        None => return err(StatusCode::BAD_REQUEST,
+            format!("Chain '{chain}' not configured"), "UNSUPPORTED_CHAIN"),
+    };
+
+    tracing::info!(chain = %chain, "resolving intent");
+
+    let (addresses, resolution) = match adapter.resolve_intent(&raw_input, &api_key).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(error = %e, "intent resolution failed");
+            return err(StatusCode::UNPROCESSABLE_ENTITY, e.to_string(), "INTENT_UNPARSEABLE");
+        }
+    };
+
+    tracing::info!(addresses = addresses.len(), "analyzing intent legs concurrently");
+    let legs = join_all(addresses.iter().map(|a| adapter.analyze_leg(a))).await;
+    let route_verdict = RouteReport::compute_verdict(&legs);
+
+    // MEV risk on intent path — include value context if provided
+    let mev_risk = Some(mev::assess(&legs, None));
+
+    tracing::info!(verdict = ?route_verdict, "intent analysis done");
+
+    (StatusCode::OK, Json(ApiResponse::Ok(RouteReport {
+        tx_hash: None,
+        chain,
+        route_verdict,
+        legs,
+        mev_risk,
+        intent_resolution: Some(resolution),
+    })))
 }

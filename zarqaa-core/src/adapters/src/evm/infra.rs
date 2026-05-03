@@ -242,6 +242,36 @@ fn infra_map() -> HashMap<(&'static str, &'static str), InfraEntry> {
     map.insert(("arbitrum", "0xff1a0f4744e8582df1ae09d5611b887b6a12925c"),
         e("Pyth Network Oracle", None));
 
+    // ── DEX Routers (Ethereum mainnet) — used for MEV risk detection ──────────
+    // Uniswap V2 Router: https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02
+    map.insert(("ethereum", "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"),
+        e("Uniswap V2 Router", None));
+    // Uniswap V3 SwapRouter: https://docs.uniswap.org/contracts/v3/reference/deployments
+    map.insert(("ethereum", "0xe592427a0aece92de3edee1f18e0157c05861564"),
+        e("Uniswap V3 SwapRouter", None));
+    // Uniswap Universal Router (V3 SwapRouter02 + permit2):
+    map.insert(("ethereum", "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"),
+        e("Uniswap V3 SwapRouter02", None));
+    map.insert(("ethereum", "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad"),
+        e("Uniswap Universal Router", None));
+    // 1inch Router v5: https://docs.1inch.io/docs/aggregation-protocol/smart-contract/AggregationRouterV5
+    map.insert(("ethereum", "0x1111111254eeb25477b68fb85ed929f73a960582"),
+        e("1inch Aggregation Router v5", None));
+    // Balancer V2 Vault: https://docs.balancer.fi/reference/contracts/deployment-addresses/mainnet
+    map.insert(("ethereum", "0xba12222222228d8ba445958a75a0704d566bf2c8"),
+        e("Balancer V2 Vault", None));
+    // 0x Exchange Proxy: https://docs.0x.org/developer-resources/contract-addresses
+    map.insert(("ethereum", "0xdef1c0ded9bec7f1a1670819833240f027b25eff"),
+        e("0x Exchange Proxy", None));
+    // Curve Router v1.0: https://curve.readthedocs.io/exchange-router.html
+    map.insert(("ethereum", "0x99a58482bd75cbab83b27ec03ca68ff489b5788f"),
+        e("Curve Router", None));
+    // Uniswap V2/V3 on Arbitrum
+    map.insert(("arbitrum", "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45"),
+        e("Uniswap V3 SwapRouter02", None));
+    map.insert(("arbitrum", "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad"),
+        e("Uniswap Universal Router", None));
+
     map
 }
 

@@ -9,7 +9,8 @@ use explorer::ExplorerClient;
 use reqwest::Client;
 use rpc::EvmRpcClient;
 use zarqaa_types::error::Result;
-use zarqaa_types::report::{ChainAddress, DataSource, LegReport, Verdict};
+use zarqaa_types::report::{ChainAddress, DataSource, IntentResolution, LegReport, Verdict};
+use crate::intent;
 
 pub struct EvmAdapter {
     rpc: EvmRpcClient,
@@ -141,6 +142,67 @@ impl EvmAdapter {
             bridge_info,
             notes,
         }
+    }
+
+    // Resolve an intent (any input form) into a list of contract addresses to analyze,
+    // plus metadata about how the intent was interpreted and which addresses could not
+    // be statically resolved.
+    pub async fn resolve_intent(
+        &self,
+        raw_input: &str,
+        anthropic_key: &str,
+    ) -> Result<(Vec<String>, IntentResolution)> {
+        // Stage 0: normalize the intent into a canonical form
+        tracing::info!("Normalizing intent");
+        let normalized = intent::normalize(raw_input, &self.http, anthropic_key).await?;
+        tracing::info!(to = %normalized.to, chain = %normalized.chain, "Intent normalized");
+
+        // Stage 1: fetch source + ABI for the target contract
+        let details = self.explorer.get_contract_details(&normalized.to).await
+            .unwrap_or_else(|e| {
+                tracing::warn!("Could not fetch contract details for {}: {e}", normalized.to);
+                explorer::ContractDetails { verified: false, name: None, abi: None, source: None }
+            });
+
+        let decoded_call = normalized.decoded_call.clone();
+
+        // Stage 2: static address extraction via Claude (only if source is available)
+        let mut static_addresses: Vec<String> = vec![normalized.to.clone()];
+        let mut unresolved: Vec<String> = vec![];
+
+        if let (Some(source), Some(abi)) = (&details.source, &details.abi) {
+            let call_desc = decoded_call.as_deref().unwrap_or("unknown function call");
+            tracing::info!("Running static address extraction");
+            let extracted = intent::extract_addresses(source, abi, call_desc, &self.http, anthropic_key).await;
+
+            for addr in extracted {
+                match (addr.addr_type.as_str(), addr.address) {
+                    ("static", Some(a)) => {
+                        if !static_addresses.contains(&a) {
+                            static_addresses.push(a);
+                        }
+                    }
+                    ("dynamic", _) => {
+                        unresolved.push(addr.reason);
+                    }
+                    _ => {}
+                }
+            }
+            tracing::info!(static_count = static_addresses.len(), dynamic_count = unresolved.len(), "Address extraction complete");
+        } else {
+            unresolved.push(format!(
+                "Source code not available for {} — static analysis skipped",
+                normalized.to
+            ));
+        }
+
+        let resolution = IntentResolution {
+            normalized_to: normalized.to,
+            decoded_call,
+            unresolved_legs: unresolved,
+        };
+
+        Ok((static_addresses, resolution))
     }
 }
 

@@ -102,13 +102,41 @@ pub struct LegReport {
     pub notes: Vec<String>,
 }
 
+// MEV exposure assessment for a transaction.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum MevRiskLevel {
+    None,
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MevRisk {
+    pub risk_level: MevRiskLevel,
+    pub summary: String,       // one sentence plain English
+    pub recommendation: String,
+    pub signals: Vec<String>,  // what triggered this (e.g. "Uniswap V3 Router detected")
+}
+
+// Populated on the intent path — shows how the input was interpreted.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntentResolution {
+    pub normalized_to: String,
+    pub decoded_call: Option<String>,   // e.g. "exactInputSingle(...)"
+    pub unresolved_legs: Vec<String>,   // dynamic addresses that could not be resolved
+}
+
 // The complete report returned to the user.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouteReport {
-    pub tx_hash: String,
+    pub tx_hash: Option<String>,        // None on intent path
     pub chain: String,
     pub route_verdict: Verdict,
     pub legs: Vec<LegReport>,
+    pub mev_risk: Option<MevRisk>,
+    pub intent_resolution: Option<IntentResolution>,
 }
 
 impl RouteReport {
