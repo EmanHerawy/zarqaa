@@ -33,18 +33,49 @@ impl Verdict {
     }
 }
 
-// Security details specific to bridge/oracle infrastructure legs.
-// All fields are mocked for now — Phase 2 reads them on-chain.
+// Bridge Security Card — all data needed to answer the 5 user questions:
+//   1. Who controls the bridge?
+//   2. Has it been hacked before?
+//   3. Does it stop itself if something goes wrong?
+//   4. Any recent warnings?
+//   5. Should I proceed?
+//
+// Fields marked [MOCK] are hardcoded for the hackathon.
+// Phase 2 replaces them with live on-chain reads (see progress.md).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BridgeInfo {
     pub protocol: String,
-    pub dvn_count: Option<u32>,
-    pub relayer_type: String,            // "contract" | "eoa" | "don" | "unknown"
-    pub required_confirmations: Option<u32>,
+    pub summary: String,                 // one-line plain English trust model
+
+    // WHO CONTROLS
+    pub dvn_count: Option<u32>,          // number of verifiers/validators
+    pub controller_type: String,         // "multisig" | "dao" | "eoa" | "don" | "guardian_council"
+    pub upgrade_timelock_days: Option<u32>,
+    pub relayer_type: String,            // "contract" | "eoa" | "don"
+
+    // SECURITY HISTORY [MOCK]
+    pub past_exploits_usd: Option<u64>,  // 0 = none, Some(n) = exploited for $n
+    pub past_exploit_note: Option<String>,
+    pub last_audit: Option<String>,      // e.g. "Jan 2026 (Hexens)"
+    pub bug_bounty_usd: Option<u64>,
+
+    // ACTIVE PROTECTIONS [MOCK]
+    pub has_rate_limits: bool,
+    pub has_circuit_breaker: bool,
+    pub emergency_pause_by: Option<String>,
+
+    // RECENT FLAGS (last 30 days) [MOCK — Phase 2: live Rekt/DefiHackLabs feed]
+    pub recent_flags: Vec<String>,
+
+    // VERDICT
+    pub verdict_label: String,           // "Proceed" | "Review" | "Stop"
+    pub verdict_summary: String,         // plain English why
+
+    // CROSS-CHAIN
     pub centralization_risk: String,     // "low" | "medium" | "high"
-    pub last_incident: Option<String>,   // e.g. "2022-08-02: Nomad exploit ($190M)"
     pub destination_chain: Option<String>,
-    pub is_mocked: bool,                 // always true until Phase 2 on-chain reads
+
+    pub is_mocked: bool,
 }
 
 // Everything we know about one contract in the transaction path.

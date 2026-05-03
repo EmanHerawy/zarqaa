@@ -84,23 +84,14 @@ impl EvmAdapter {
         }
 
         if let Some(info) = &bridge_info {
-            notes.push(format!("Bridge protocol: {} [MOCK DATA]", info.protocol));
-            notes.push(format!(
-                "Centralization risk: {} | DVNs: {} | Relayer: {}",
-                info.centralization_risk,
-                info.dvn_count.map(|n| n.to_string()).unwrap_or_else(|| "unknown".into()),
-                info.relayer_type,
-            ));
-            if let Some(inc) = &info.last_incident {
-                notes.push(format!("⚠ Past incident: {inc}"));
-                if verdict != Verdict::Red {
-                    verdict = Verdict::Amber;
-                }
+            // Escalate verdict based on bridge card data
+            if info.past_exploits_usd.unwrap_or(0) > 0 && verdict != Verdict::Red {
+                verdict = Verdict::Amber;
             }
             if info.destination_chain.is_some() {
                 notes.push(format!(
                     "Cross-chain destination tracking not yet supported for {} \
-                     (reason: CROSS_CHAIN_UNSUPPORTED)",
+                     (CROSS_CHAIN_UNSUPPORTED)",
                     info.protocol
                 ));
             }

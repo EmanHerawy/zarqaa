@@ -4730,18 +4730,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "zarqa"
+name = "zarqaa"
 version = "0.1.0"
 dependencies = [
  "dotenvy",
  "serde_json",
  "tokio",
- "zarqa-adapters",
- "zarqa-types",
+ "zarqaa-adapters",
+ "zarqaa-types",
 ]
 
 [[package]]
-name = "zarqa-adapters"
+name = "zarqaa-adapters"
 version = "0.1.0"
 dependencies = [
  "alloy",
@@ -4754,11 +4754,11 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "zarqa-types",
+ "zarqaa-types",
 ]
 
 [[package]]
-name = "zarqa-types"
+name = "zarqaa-types"
 version = "0.1.0"
 dependencies = [
  "async-trait",
