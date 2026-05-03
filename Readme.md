@@ -43,24 +43,30 @@ It does **not** simulate outcomes, predict price, or replace your wallet. It agg
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              YOUR MACHINE                                   │
-│                                                                             │
-│  ┌──────────────────────────┐          ┌──────────────────────────────────┐ │
-│  │   NODE A  (Zarqaa)       │          │   NODE B  (OpenClaw Agent)       │ │
-│  │                          │          │                                  │ │
-│  │  :9002  AXL HTTP API     │◄─ mesh ─►│  :9012  AXL HTTP API            │ │
-│  │  :7100  P2P TLS          │          │  :7100  P2P TLS (outbound only)  │ │
-│  │  :8080  Zarqaa Gateway   │          │                                  │ │
-│  │  :9003  MCP Router       │          │  OpenClaw AI agent (Docker)      │ │
-│  │                          │          │  safety_guard.py                 │ │
-│  └──────────────────────────┘          └──────────────────────────────────┘ │
-│                                                                             │
-│  app/  Next.js web scanner  :3000  (user-facing, direct to gateway)        │
-│                                                                             │
-│  Agent flow:  safety_guard.py → Node B :9012 ─mesh─► Node A → MCP Router  │
-│               → Zarqaa Gateway :8080 → analysis → verdict                  │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                YOUR MACHINE                                      │
+│                                                                                  │
+│  ┌─────────────────────────────┐         ┌──────────────────────────────────┐   │
+│  │     NODE A  (Zarqaa)        │         │   NODE B  (OpenClaw Agent)       │   │
+│  │                             │         │                                  │   │
+│  │  :9002  AXL HTTP API        │◄─mesh──►│  :9012  AXL HTTP API            │   │
+│  │  :7100  P2P TLS             │         │  :7100  P2P TLS (outbound only)  │   │
+│  │  :8080  Zarqaa Gateway ◄────┼─────────┼──── safety_guard.py             │   │
+│  │  :9003  MCP Router     ◄────┼─mesh────┼──── (via Node B /mcp route)     │   │
+│  └─────────────────────────────┘         └──────────────────────────────────┘   │
+│            ▲                                                                     │
+│            │ POST /analyze                                                       │
+│            │ POST /analyze-intent                                                │
+│            │                                                                     │
+│  ┌─────────┴───────────────────┐                                                │
+│  │   Web Scanner  app/  :3000  │  ← users paste tx hash or describe intent      │
+│  │   Next.js + API proxy       │                                                │
+│  └─────────────────────────────┘                                                │
+│                                                                                  │
+│  Web flow:   browser → Next.js /api/analyze[-intent] → Zarqaa Gateway :8080     │
+│  Agent flow: safety_guard.py → Node B :9012 ─mesh─► Node A → MCP Router        │
+│              → Zarqaa Gateway :8080 → analysis → verdict                        │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Components
