@@ -9,6 +9,16 @@ pub struct ChainAddress {
     pub address: String,
 }
 
+// Where a field's data came from and how fresh it is.
+//   Static   — reviewed, hardcoded; accurate but may lag quarterly updates
+//   Live     — just fetched from an external source this run
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum DataSource {
+    Static,
+    Live { fetched_at: u64 }, // unix timestamp
+}
+
 // The four possible outcomes for a contract leg.
 // Ordering matters: Green < Amber < Unverified < Red (weakest leg wins).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -39,33 +49,31 @@ impl Verdict {
 //   3. Does it stop itself if something goes wrong?
 //   4. Any recent warnings?
 //   5. Should I proceed?
-//
-// Fields marked [MOCK] are hardcoded for the hackathon.
-// Phase 2 replaces them with live on-chain reads (see progress.md).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BridgeInfo {
     pub protocol: String,
     pub summary: String,                 // one-line plain English trust model
 
-    // WHO CONTROLS
+    // WHO CONTROLS — static, changes quarterly at most
     pub dvn_count: Option<u32>,          // number of verifiers/validators
     pub controller_type: String,         // "multisig" | "dao" | "eoa" | "don" | "guardian_council"
     pub upgrade_timelock_days: Option<u32>,
     pub relayer_type: String,            // "contract" | "eoa" | "don"
 
-    // SECURITY HISTORY [MOCK]
+    // SECURITY HISTORY — static (historical facts don't change)
     pub past_exploits_usd: Option<u64>,  // 0 = none, Some(n) = exploited for $n
     pub past_exploit_note: Option<String>,
     pub last_audit: Option<String>,      // e.g. "Jan 2026 (Hexens)"
     pub bug_bounty_usd: Option<u64>,
 
-    // ACTIVE PROTECTIONS [MOCK]
+    // ACTIVE PROTECTIONS — static (structural properties of the protocol)
     pub has_rate_limits: bool,
     pub has_circuit_breaker: bool,
     pub emergency_pause_by: Option<String>,
 
-    // RECENT FLAGS (last 30 days) [MOCK — Phase 2: live Rekt/DefiHackLabs feed]
+    // RECENT FLAGS (last 30 days) — fetched live from DefiLlama/Rekt feeds
     pub recent_flags: Vec<String>,
+    pub recent_flags_source: DataSource,
 
     // VERDICT
     pub verdict_label: String,           // "Proceed" | "Review" | "Stop"
@@ -75,7 +83,9 @@ pub struct BridgeInfo {
     pub centralization_risk: String,     // "low" | "medium" | "high"
     pub destination_chain: Option<String>,
 
-    pub is_mocked: bool,
+    // Whether the static fields come from reviewed hardcoded data or on-chain reads.
+    // Phase 2 replaces static fields with live on-chain reads.
+    pub static_data_source: DataSource,
 }
 
 // Everything we know about one contract in the transaction path.

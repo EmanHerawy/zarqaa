@@ -1,21 +1,21 @@
 use std::collections::HashMap;
-use zarqaa_types::report::BridgeInfo;
+use zarqaa_types::report::{BridgeInfo, DataSource};
 
 pub fn known_infra_label(chain_id: &str, address: &str) -> Option<String> {
     let addr = address.to_lowercase();
     infra_map().get(&(chain_id, addr.as_str())).map(|e| e.label.to_string())
 }
 
-// Returns the full Bridge Security Card for known infrastructure.
-// All fields marked is_mocked=true until Phase 2 on-chain reads.
+// Returns the static Bridge Security Card for known infrastructure.
+// Static fields are reviewed, hardcoded data — accurate but may lag quarterly updates.
+// recent_flags are populated live by feeds::fetch_recent_flags() in the adapter layer.
 //
-// TODO (Phase 2):
-//   - CCIP: read ARM/RMN contract for real risk config + rate limits
+// TODO (Phase 2 — replace static_data_source with DataSource::Live):
+//   - CCIP: read ARM/RMN contract for real DVN/DON config + rate limits
 //   - LayerZero: call getUlnConfig(oapp, eid) for real DVN list per route
 //   - Wormhole: call getCurrentGuardianSetIndex() + getGuardianSet() on core
-//   - Recent flags: integrate Rekt.news + DefiHackLabs feed (30-day window)
 //   - Timelock: read delay() from detected timelock contract on-chain
-pub fn bridge_mock_info(chain_id: &str, address: &str) -> Option<BridgeInfo> {
+pub fn bridge_static_info(chain_id: &str, address: &str) -> Option<BridgeInfo> {
     let addr = address.to_lowercase();
     infra_map().get(&(chain_id, addr.as_str())).and_then(|e| e.bridge_info.clone())
 }
@@ -32,132 +32,148 @@ fn e(label: &'static str, bridge_info: Option<BridgeInfo>) -> InfraEntry {
 fn ccip(destination_chain: Option<&str>) -> Option<BridgeInfo> {
     Some(BridgeInfo {
         protocol: "Chainlink CCIP".to_string(),
-        summary: "Double-checked by two independent teams".to_string(),
+        // 16 independent DON node operators + separate RMN network
+        // Source: https://docs.chain.link/ccip/concepts/architecture/offchain/overview
+        summary: "16 independent node operators + separate Risk Management Network".to_string(),
 
-        dvn_count: Some(5),
+        dvn_count: Some(16),
         controller_type: "don".to_string(),
-        upgrade_timelock_days: Some(7),
+        upgrade_timelock_days: None, // timelock exists but duration not publicly disclosed
         relayer_type: "don".to_string(),
 
         past_exploits_usd: Some(0),
         past_exploit_note: None,
-        last_audit: Some("Continuous (multiple firms)".to_string()),
-        bug_bounty_usd: None,
+        last_audit: Some("Continuous — multiple independent firms".to_string()),
+        bug_bounty_usd: Some(3_000_000), // Immunefi max payout; source: immunefi.com/bug-bounty/chainlink
 
         has_rate_limits: true,
         has_circuit_breaker: true,
-        emergency_pause_by: Some("Independent Risk Management Network".to_string()),
+        emergency_pause_by: Some("Independent Risk Management Network (ARM/RMN)".to_string()),
 
         recent_flags: vec![],
+        recent_flags_source: DataSource::Static,
 
         verdict_label: "Proceed".to_string(),
-        verdict_summary: "Multiple independent checks make this the most robust option. \
-                          Slower than others, but safer.".to_string(),
+        verdict_summary: "Most robust cross-chain option: 16 independent node operators plus \
+                          a separate RMN safety layer. No exploits to date.".to_string(),
 
         centralization_risk: "low".to_string(),
         destination_chain: destination_chain.map(str::to_string),
-        is_mocked: true,
+        static_data_source: DataSource::Static,
     })
 }
 
 fn layerzero_v1() -> Option<BridgeInfo> {
     Some(BridgeInfo {
         protocol: "LayerZero V1".to_string(),
-        summary: "You choose your own guards — choose wisely".to_string(),
+        // Default DVN config is 1, but apps must set their own — actual count varies per app.
+        summary: "Apps choose their own verifiers — security depends on their DVN config".to_string(),
 
-        dvn_count: Some(1),
+        dvn_count: Some(1), // default; each app configures its own count
         controller_type: "multisig".to_string(),
-        upgrade_timelock_days: Some(2),
+        upgrade_timelock_days: None, // not publicly disclosed
         relayer_type: "contract".to_string(),
 
-        past_exploits_usd: Some(0),
+        past_exploits_usd: Some(0), // protocol not exploited; app losses below
         past_exploit_note: Some(
-            "$293M lost via misconfigured app using 1-of-1 DVN (Radiant Capital, Oct 2024)"
+            "Radiant Capital (Oct 2024) — $50M lost; app misconfigured to use 1-of-1 DVN \
+             instead of multi-verifier setup. Protocol was not at fault."
                 .to_string(),
         ),
-        last_audit: Some("Multiple firms".to_string()),
-        bug_bounty_usd: Some(15_000_000),
+        last_audit: Some("Multiple firms (ChainSecurity, BlockSec, Code4rena)".to_string()),
+        bug_bounty_usd: Some(15_000_000), // Immunefi; source: prnewswire.com (May 2023)
 
         has_rate_limits: true,
         has_circuit_breaker: false,
-        emergency_pause_by: Some("App owner only".to_string()),
+        emergency_pause_by: Some("App owner only (no global pause)".to_string()),
 
         recent_flags: vec![],
+        recent_flags_source: DataSource::Static,
 
         verdict_label: "Review".to_string(),
-        verdict_summary: "Core protocol is solid but apps must configure multiple DVN verifiers. \
-                          Verify your app's DVN setup before proceeding.".to_string(),
+        verdict_summary: "Core protocol is solid but security is only as good as the app's \
+                          DVN configuration. Verify your app uses 2+ independent verifiers.".to_string(),
 
         centralization_risk: "medium".to_string(),
         destination_chain: None,
-        is_mocked: true,
+        static_data_source: DataSource::Static,
     })
 }
 
 fn layerzero_v2() -> Option<BridgeInfo> {
     Some(BridgeInfo {
         protocol: "LayerZero V2".to_string(),
-        summary: "You choose your own guards — choose wisely".to_string(),
+        // Default DVN config is 1, but apps must set their own — actual count varies per app.
+        summary: "Apps choose their own verifiers — security depends on their DVN config".to_string(),
 
-        dvn_count: Some(1),
+        dvn_count: Some(1), // default; each app configures its own count
         controller_type: "multisig".to_string(),
-        upgrade_timelock_days: Some(2),
+        upgrade_timelock_days: None, // not publicly disclosed
         relayer_type: "contract".to_string(),
 
-        past_exploits_usd: Some(0),
+        past_exploits_usd: Some(0), // protocol not exploited; app losses below
         past_exploit_note: Some(
-            "$293M lost via misconfigured app using 1-of-1 DVN (Radiant Capital, Oct 2024)"
+            "Radiant Capital (Oct 2024) — $50M lost; app misconfigured to use 1-of-1 DVN \
+             instead of multi-verifier setup. Protocol was not at fault."
                 .to_string(),
         ),
-        last_audit: Some("Jan 2026 (Hexens) — updated Mar 2026".to_string()),
-        bug_bounty_usd: Some(15_000_000),
+        last_audit: Some("Multiple firms (ChainSecurity, BlockSec, Code4rena)".to_string()),
+        bug_bounty_usd: Some(15_000_000), // Immunefi; source: prnewswire.com (May 2023)
 
         has_rate_limits: true,
         has_circuit_breaker: false,
-        emergency_pause_by: Some("App owner only".to_string()),
+        emergency_pause_by: Some("App owner only (no global pause)".to_string()),
 
         recent_flags: vec![],
+        recent_flags_source: DataSource::Static,
 
         verdict_label: "Review".to_string(),
-        verdict_summary: "Core protocol is solid but apps must configure multiple DVN verifiers. \
-                          Verify your app's DVN setup before proceeding.".to_string(),
+        verdict_summary: "Core protocol is solid but security is only as good as the app's \
+                          DVN configuration. Verify your app uses 2+ independent verifiers.".to_string(),
 
         centralization_risk: "medium".to_string(),
         destination_chain: None,
-        is_mocked: true,
+        static_data_source: DataSource::Static,
     })
 }
 
 fn wormhole() -> Option<BridgeInfo> {
     Some(BridgeInfo {
         protocol: "Wormhole".to_string(),
-        summary: "19 known guardians — 13 must agree to move your funds".to_string(),
+        summary: "19 known guardians — 13-of-19 must agree to move your funds".to_string(),
 
-        dvn_count: Some(19),
+        dvn_count: Some(19), // source: wormhole.com/docs/protocol/security/
         controller_type: "guardian_council".to_string(),
-        upgrade_timelock_days: Some(3),
+        upgrade_timelock_days: None, // timelock exists but duration not publicly disclosed
         relayer_type: "contract".to_string(),
 
-        past_exploits_usd: Some(326_000_000),
+        // Source: chainalysis.com/blog/wormhole-hack-february-2022/
+        past_exploits_usd: Some(321_000_000), // 120,000 ETH at Feb 2022 prices
         past_exploit_note: Some(
-            "Feb 2022 — $326M. Fully repaid by Jump Crypto. Root cause patched.".to_string(),
+            "Feb 2022 — 120,000 ETH (~$321M). Jump Crypto replenished all user funds \
+             within 24h. Root cause: signature verification vulnerability. Patched."
+                .to_string(),
         ),
-        last_audit: Some("Ongoing (29 total audits across multiple firms)".to_string()),
-        bug_bounty_usd: Some(10_000_000),
+        last_audit: Some("29 third-party audits (multiple firms) — source: wormhole.com/docs/protocol/security/".to_string()),
+        // Current Immunefi max payout; note: a record $10M single payout occurred in 2022
+        // Source: immunefi.com/bug-bounty/wormhole/
+        bug_bounty_usd: Some(2_500_000),
 
         has_rate_limits: true,
         has_circuit_breaker: true,
         emergency_pause_by: Some("Guardian supermajority (13-of-19)".to_string()),
 
         recent_flags: vec![],
+        recent_flags_source: DataSource::Static,
 
         verdict_label: "Proceed with Awareness".to_string(),
-        verdict_summary: "Strong protections now, but history shows guardian compromise is \
-                          possible. Suitable for medium-sized transfers.".to_string(),
+        verdict_summary: "Strong protections now, but the Feb 2022 exploit showed that smart \
+                          contract bugs can bypass the guardian model. Suitable for \
+                          medium-sized transfers.".to_string(),
 
         centralization_risk: "low".to_string(),
         destination_chain: None,
-        is_mocked: true,
+        static_data_source: DataSource::Static,
     })
 }
 
@@ -265,39 +281,45 @@ mod tests {
 
     #[test]
     fn ccip_router_verdict_is_proceed() {
-        let info = bridge_mock_info("ethereum", "0x80226fc0ee2b096224eeac085bb9a8cba1146f7d")
+        let info = bridge_static_info("ethereum", "0x80226fc0ee2b096224eeac085bb9a8cba1146f7d")
             .expect("CCIP Router should have bridge info");
         assert_eq!(info.verdict_label, "Proceed");
         assert_eq!(info.centralization_risk, "low");
         assert_eq!(info.destination_chain.as_deref(), Some("arbitrum"));
         assert!(info.has_circuit_breaker);
-        assert!(info.is_mocked);
+        assert_eq!(info.dvn_count, Some(16)); // 16 independent DON node operators
+        assert_eq!(info.bug_bounty_usd, Some(3_000_000)); // Immunefi max
+        assert_eq!(info.upgrade_timelock_days, None); // not publicly disclosed
+        assert_eq!(info.static_data_source, DataSource::Static);
     }
 
     #[test]
     fn layerzero_v2_verdict_is_review() {
-        let info = bridge_mock_info("ethereum", "0x1a44076050125825900e736c501f859c50fe728c")
+        let info = bridge_static_info("ethereum", "0x1a44076050125825900e736c501f859c50fe728c")
             .expect("LayerZero V2 should have bridge info");
         assert_eq!(info.verdict_label, "Review");
-        assert_eq!(info.dvn_count, Some(1));
+        assert_eq!(info.dvn_count, Some(1)); // default; apps configure their own
         assert!(!info.has_circuit_breaker);
         assert!(info.past_exploit_note.is_some());
+        assert_eq!(info.upgrade_timelock_days, None); // not publicly disclosed
     }
 
     #[test]
     fn wormhole_has_exploit_history_and_proceed_verdict() {
-        let info = bridge_mock_info("ethereum", "0x98f3c9e6e3face36baad05fe09d375ef1464288b")
+        let info = bridge_static_info("ethereum", "0x98f3c9e6e3face36baad05fe09d375ef1464288b")
             .expect("Wormhole should have bridge info");
-        assert_eq!(info.past_exploits_usd, Some(326_000_000));
+        assert_eq!(info.past_exploits_usd, Some(321_000_000)); // 120k ETH at Feb 2022 prices
         assert!(info.past_exploit_note.is_some());
         assert!(info.verdict_label.starts_with("Proceed"));
-        assert_eq!(info.dvn_count, Some(19));
+        assert_eq!(info.dvn_count, Some(19)); // source: wormhole.com/docs/protocol/security/
         assert!(info.has_circuit_breaker);
+        assert_eq!(info.bug_bounty_usd, Some(2_500_000)); // current Immunefi max
+        assert_eq!(info.upgrade_timelock_days, None); // not publicly disclosed
     }
 
     #[test]
     fn chainlink_price_feed_has_no_bridge_info() {
-        let info = bridge_mock_info("ethereum", "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419");
+        let info = bridge_static_info("ethereum", "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419");
         assert!(info.is_none());
     }
 }
