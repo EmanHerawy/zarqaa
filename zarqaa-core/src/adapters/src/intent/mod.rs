@@ -25,7 +25,13 @@ pub struct ExtractedAddress {
 
 // Normalize any input form into a canonical transaction intent.
 // Accepts raw tx objects, natural language, or anything in between.
-pub async fn normalize(raw_input: &str, http: &Client, api_key: &str) -> Result<NormalizedIntent> {
+pub async fn normalize(
+    raw_input: &str,
+    http: &Client,
+    api_key: &str,
+    api_url: &str,
+    model: &str,
+) -> Result<NormalizedIntent> {
     let prompt = format!(
         r#"You are a Web3 transaction parser. Extract transaction fields from the user input.
 Return ONLY valid JSON, no explanation, no markdown.
@@ -44,7 +50,7 @@ User input:
 {raw_input}"#
     );
 
-    let text = claude::ask(http, api_key, prompt).await?;
+    let text = claude::ask(http, api_key, api_url, model, prompt).await?;
 
     // Strip markdown fences if Claude included them
     let json_str = strip_json_fences(&text);
@@ -90,6 +96,8 @@ pub async fn extract_addresses(
     decoded_call: &str,
     http: &Client,
     api_key: &str,
+    api_url: &str,
+    model: &str,
 ) -> Vec<ExtractedAddress> {
     // Truncate very large source to fit comfortably in context
     let source_truncated = if source_code.len() > 40_000 {
@@ -126,7 +134,7 @@ Return ONLY a JSON array, no explanation:
 Include ONLY addresses that are CALLED externally. Skip internal library calls and events."#
     );
 
-    let text = match claude::ask(http, api_key, prompt).await {
+    let text = match claude::ask(http, api_key, api_url, model, prompt).await {
         Ok(t) => t,
         Err(e) => {
             tracing::warn!("Static address extraction failed: {e}");

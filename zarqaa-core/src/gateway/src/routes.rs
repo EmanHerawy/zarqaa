@@ -86,10 +86,10 @@ pub async fn analyze_intent(
     State(state): State<SharedState>,
     Json(req): Json<IntentRequest>,
 ) -> (StatusCode, Json<ApiResponse>) {
-    let api_key = match &state.anthropic_key {
-        Some(k) => k.clone(),
+    let llm = match &state.llm {
+        Some(l) => l,
         None => return err(StatusCode::SERVICE_UNAVAILABLE,
-            "ANTHROPIC_API_KEY not configured on this instance", "LLM_UNAVAILABLE"),
+            "LLM_API_KEY not configured on this instance", "LLM_UNAVAILABLE"),
     };
 
     // Convert intent value to string for the normalizer
@@ -108,7 +108,7 @@ pub async fn analyze_intent(
 
     tracing::info!(chain = %chain, "resolving intent");
 
-    let (addresses, resolution) = match adapter.resolve_intent(&raw_input, &api_key).await {
+    let (addresses, resolution) = match adapter.resolve_intent(&raw_input, llm).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!(error = %e, "intent resolution failed");

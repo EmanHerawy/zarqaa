@@ -150,11 +150,11 @@ impl EvmAdapter {
     pub async fn resolve_intent(
         &self,
         raw_input: &str,
-        anthropic_key: &str,
+        llm: &crate::LlmConfig,
     ) -> Result<(Vec<String>, IntentResolution)> {
         // Stage 0: normalize the intent into a canonical form
         tracing::info!("Normalizing intent");
-        let normalized = intent::normalize(raw_input, &self.http, anthropic_key).await?;
+        let normalized = intent::normalize(raw_input, &self.http, &llm.api_key, &llm.api_url, &llm.model).await?;
         tracing::info!(to = %normalized.to, chain = %normalized.chain, "Intent normalized");
 
         // Stage 1: fetch source + ABI for the target contract
@@ -166,14 +166,14 @@ impl EvmAdapter {
 
         let decoded_call = normalized.decoded_call.clone();
 
-        // Stage 2: static address extraction via Claude (only if source is available)
+        // Stage 2: static address extraction via LLM (only if source is available)
         let mut static_addresses: Vec<String> = vec![normalized.to.clone()];
         let mut unresolved: Vec<String> = vec![];
 
         if let (Some(source), Some(abi)) = (&details.source, &details.abi) {
             let call_desc = decoded_call.as_deref().unwrap_or("unknown function call");
             tracing::info!("Running static address extraction");
-            let extracted = intent::extract_addresses(source, abi, call_desc, &self.http, anthropic_key).await;
+            let extracted = intent::extract_addresses(source, abi, call_desc, &self.http, &llm.api_key, &llm.api_url, &llm.model).await;
 
             for addr in extracted {
                 match (addr.addr_type.as_str(), addr.address) {
