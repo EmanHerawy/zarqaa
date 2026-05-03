@@ -3,6 +3,9 @@
 pub struct EvmChainConfig {
     pub chain_id: String,
     pub rpc_url: String,
+    // Etherscan V2 base URL with chainid already embedded as a query param,
+    // e.g. "https://api.etherscan.io/v2/api?chainid=1"
+    // ExplorerClient appends "&module=...&action=...&apikey=..." on top.
     pub explorer_api_url: String,
     pub explorer_api_key: String,
 }
@@ -13,7 +16,8 @@ impl EvmChainConfig {
             chain_id: "ethereum".to_string(),
             rpc_url: std::env::var("ZARQA_ETH_RPC_URL")
                 .expect("ZARQA_ETH_RPC_URL must be set"),
-            explorer_api_url: "https://api.etherscan.io/api".to_string(),
+            // Etherscan V2 — chainid=1 is Ethereum mainnet
+            explorer_api_url: "https://api.etherscan.io/v2/api?chainid=1".to_string(),
             explorer_api_key: std::env::var("ZARQA_ETHERSCAN_KEY")
                 .unwrap_or_default(),
         }

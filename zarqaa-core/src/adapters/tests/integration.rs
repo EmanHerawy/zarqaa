@@ -8,14 +8,16 @@
 // These tests hit real mainnet data. The tx hashes used are from confirmed
 // blocks and will never change, so the assertions are stable.
 
+use std::sync::OnceLock;
 use zarqa_adapters::{EvmAdapter, EvmChainConfig};
 use zarqa_types::report::Verdict;
 
+// OnceLock ensures dotenvy is called exactly once even when tests run in parallel.
+// Without this, two tests could race on std::env::set_var which is not thread-safe.
+static ENV: OnceLock<()> = OnceLock::new();
+
 fn setup() {
-    // Load .env file if present. .ok() silently ignores a missing file,
-    // so these tests still work in CI where .env doesn't exist
-    // (CI should provide env vars directly instead).
-    dotenvy::dotenv().ok();
+    ENV.get_or_init(|| { dotenvy::dotenv().ok(); });
 }
 
 fn adapter() -> EvmAdapter {
@@ -23,66 +25,72 @@ fn adapter() -> EvmAdapter {
     EvmAdapter::new(EvmChainConfig::ethereum_from_env())
 }
 
+// ── REAL TX HASH — replace this with one from Etherscan ──────────────────────
+// Go to https://etherscan.io/address/0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45
+// Click any recent transaction → copy the tx hash → paste below.
+// The router address is Uniswap V3 SwapRouter02. Any swap through it touches
+// multiple contracts (router, pool, 2 token contracts) which is what we need.
+const UNISWAP_V3_SWAP_TX: &str = "0xda1a5adb70e061cbaf129250228f2161f783083bff9cd8fef5514f0b103de6b4";
+
 // ── End-to-end: known Uniswap V3 swap ────────────────────────────────────────
-//
-// This tx is a real Uniswap V3 USDC→WETH swap on mainnet (block 12376729).
-// It touches: Uniswap V3 Router, the USDC/WETH pool, USDC token, WETH token.
-// All four contracts are source-verified on Etherscan.
-//
-// This is the PRIMARY integration test — if this passes, the full pipeline works.
 #[tokio::test]
 #[ignore]
 async fn e2e_uniswap_v3_swap_all_legs_verified() {
-    let tx = "0xd0b2e2b72893a0c6c6f338a4e5a47d87c02af06b73a43fc25d44ee4a45c0b9d9";
-    let a = adapter();
+    assert_ne!(UNISWAP_V3_SWAP_TX, "REPLACE_WITH_REAL_TX_HASH",
+        "Set UNISWAP_V3_SWAP_TX to a real tx hash from Etherscan");
 
-    let addresses = a.resolve_legs(tx).await
+    let a = adapter();
+    let addresses = a.resolve_legs(UNISWAP_V3_SWAP_TX).await
         .expect("resolve_legs should succeed for a confirmed mainnet tx");
 
     assert!(!addresses.is_empty(), "a swap touches at least one contract");
 
-    // Analyze every leg
-    let legs: Vec<_> = {
-        let mut v = Vec::new();
-        for addr in &addresses {
-            v.push(a.analyze_leg(addr).await);
-        }
-        v
-    };
+    let mut legs = Vec::new();
+    for addr in &addresses {
+        legs.push(a.analyze_leg(addr).await);
+    }
 
-    // All Uniswap V3 contracts are verified — no leg should be Unverified or Red
     for leg in &legs {
         assert_ne!(
             leg.verdict, Verdict::Red,
-            "leg {} should not be Red on a clean Uniswap swap",
-            leg.address
+            "leg {} should not be Red — notes: {:?}", leg.address, leg.notes
         );
     }
 
-    // At least one leg should have source_verified = true
     let verified_count = legs.iter().filter(|l| l.source_verified).count();
-    assert!(verified_count > 0, "at least one contract should be source-verified");
+    assert!(verified_count > 0,
+        "at least one contract should be source-verified — notes per leg: {:#?}",
+        legs.iter().map(|l| &l.notes).collect::<Vec<_>>()
+    );
 }
 
 // ── Resolve legs: tx with multiple inner contract calls ───────────────────────
 #[tokio::test]
 #[ignore]
 async fn resolve_legs_returns_multiple_addresses_for_swap() {
-    let tx = "0xd0b2e2b72893a0c6c6f338a4e5a47d87c02af06b73a43fc25d44ee4a45c0b9d9";
-    let addresses = adapter().resolve_legs(tx).await.expect("should resolve");
-    // A V3 swap touches router + pool + at least 2 token contracts
-    assert!(addresses.len() >= 2, "expected multiple legs, got {}", addresses.len());
+    assert_ne!(UNISWAP_V3_SWAP_TX, "REPLACE_WITH_REAL_TX_HASH",
+        "Set UNISWAP_V3_SWAP_TX to a real tx hash from Etherscan");
+
+    let addresses = adapter().resolve_legs(UNISWAP_V3_SWAP_TX).await
+        .expect("should resolve");
+    assert!(addresses.len() >= 2,
+        "expected multiple legs, got {}. Addresses: {:?}", addresses.len(), addresses);
 }
 
 // ── Source check: Uniswap V3 Router is verified ───────────────────────────────
 #[tokio::test]
 #[ignore]
 async fn uniswap_v3_router_is_source_verified() {
-    // Uniswap V3 SwapRouter02 — deployed, immutable, always verified
+    // SwapRouter02 — deployed, immutable, always verified on Etherscan
     let router = "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45";
     let leg = adapter().analyze_leg(router).await;
-    assert!(leg.source_verified, "Uniswap V3 router should be source verified");
-    assert!(!leg.is_proxy, "Uniswap V3 router is not a proxy");
+
+    // If this fails, check leg.notes — it will show the actual error
+    // (e.g. "Source check failed: Explorer rate limited" means the API key isn't loaded)
+    assert!(leg.source_verified,
+        "Uniswap V3 router should be source verified — notes: {:?}", leg.notes);
+    assert!(!leg.is_proxy,
+        "Uniswap V3 router is not a proxy — notes: {:?}", leg.notes);
 }
 
 // ── Proxy detection: Uniswap V3 factory is NOT a proxy ───────────────────────
@@ -91,7 +99,7 @@ async fn uniswap_v3_router_is_source_verified() {
 async fn non_proxy_contract_returns_false() {
     let factory = "0x1f98431c8ad98523631ae4a59f267346ea31f984";
     let leg = adapter().analyze_leg(factory).await;
-    assert!(!leg.is_proxy, "Uniswap factory is not a proxy");
+    assert!(!leg.is_proxy, "Uniswap factory is not a proxy — notes: {:?}", leg.notes);
     assert!(leg.proxy_implementation.is_none());
 }
 
@@ -101,20 +109,19 @@ async fn non_proxy_contract_returns_false() {
 async fn layerzero_v2_endpoint_detected_as_infra() {
     let lz_endpoint = "0x1a44076050125825900e736c501f859c50fe728c";
     let leg = adapter().analyze_leg(lz_endpoint).await;
-    assert!(leg.infra_kind.is_some(), "LayerZero endpoint should be detected as infra");
-    assert!(
-        leg.infra_kind.as_deref().unwrap().contains("LayerZero"),
-        "infra label should mention LayerZero"
-    );
-    // Known infra should bump verdict to at least Amber
-    assert_ne!(leg.verdict, Verdict::Green, "known infra should not be Green");
+
+    assert!(leg.infra_kind.is_some(),
+        "LayerZero endpoint should be detected as infra — notes: {:?}", leg.notes);
+    assert!(leg.infra_kind.as_deref().unwrap().contains("LayerZero"),
+        "infra label should mention LayerZero, got: {:?}", leg.infra_kind);
+    assert_ne!(leg.verdict, Verdict::Green,
+        "known infra should not be Green — notes: {:?}", leg.notes);
 }
 
 // ── Error handling: non-existent tx hash ─────────────────────────────────────
 #[tokio::test]
 #[ignore]
 async fn resolve_legs_errors_on_unknown_tx() {
-    // All zeros is not a real tx hash
     let fake = "0x0000000000000000000000000000000000000000000000000000000000000000";
     let result = adapter().resolve_legs(fake).await;
     assert!(result.is_err(), "should error on non-existent tx");

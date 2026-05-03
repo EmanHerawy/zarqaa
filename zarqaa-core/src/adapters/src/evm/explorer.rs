@@ -2,13 +2,18 @@ use reqwest::Client;
 use serde::Deserialize;
 use zarqa_types::error::{Result, ZarqaError};
 
-// Etherscan wraps every response in this envelope.
-// `status` is "1" for success, "0" for error.
+// Etherscan's envelope: status "1" = success, "0" = error.
+//
+// IMPORTANT: when status is "0" (e.g. rate limit, invalid key), `result` is
+// a plain String like "Max rate limit reached", NOT an array. If we deserialize
+// `result` directly as Vec<SourceResult>, serde panics before we can check status.
+// Solution: deserialize `result` as a raw JSON value, inspect status first,
+// then parse the array only when we know it's safe.
 #[derive(Deserialize)]
-struct EtherscanResp {
+struct EtherscanEnvelope {
     status: String,
     message: String,
-    result: Vec<SourceResult>,
+    result: serde_json::Value,
 }
 
 #[derive(Deserialize)]
@@ -40,23 +45,29 @@ impl ExplorerClient {
     // unverified contracts, but sets ABI to the literal string
     // "Contract source code not verified". That's the sentinel we check.
     pub async fn get_source_info(&self, address: &str) -> Result<(bool, Option<String>)> {
+        // api_url already contains "?chainid=X", so we use "&" not "?" here
         let url = format!(
-            "{}?module=contract&action=getsourcecode&address={}&apikey={}",
+            "{}&module=contract&action=getsourcecode&address={}&apikey={}",
             self.api_url, address, self.api_key
         );
 
-        let resp: EtherscanResp = self.http.get(&url).send().await?.json().await?;
+        let resp: EtherscanEnvelope = self.http.get(&url).send().await?.json().await?;
 
+        // Check status BEFORE trying to parse result — result may be a String on error
         if resp.status != "1" {
-            // Etherscan uses "Max rate limit reached" in the message for rate limits
-            if resp.message.to_lowercase().contains("rate") {
+            if resp.message.to_lowercase().contains("rate")
+                || resp.result.as_str().map(|s| s.to_lowercase().contains("rate")).unwrap_or(false)
+            {
                 return Err(ZarqaError::ExplorerRateLimited);
             }
-            return Err(ZarqaError::ExplorerApi(resp.message));
+            let detail = resp.result.as_str().unwrap_or(&resp.message).to_string();
+            return Err(ZarqaError::ExplorerApi(detail));
         }
 
-        let result = resp.result.into_iter().next()
-            .ok_or_else(|| ZarqaError::ExplorerApi("empty result".to_string()))?;
+        // Status is "1" — result is now safe to parse as an array
+        let items: Vec<SourceResult> = serde_json::from_value(resp.result)?;
+        let result = items.into_iter().next()
+            .ok_or_else(|| ZarqaError::ExplorerApi("empty result array".to_string()))?;
 
         let verified = result.abi != "Contract source code not verified";
         let name = if verified { Some(result.contract_name) } else { None };
