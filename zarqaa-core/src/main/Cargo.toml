@@ -12,3 +12,4 @@ zarqa-types    = { path = "../types" }
 zarqa-adapters = { path = "../adapters" }
 tokio          = { workspace = true }
 serde_json     = { workspace = true }
+dotenvy        = "0.15"

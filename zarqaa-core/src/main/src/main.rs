@@ -5,6 +5,9 @@ use zarqa_types::report::RouteReport;
 // the tokio runtime. Without this, you can't use .await anywhere in main.
 #[tokio::main]
 async fn main() {
+    // Load .env if present — allows running locally without exporting vars manually
+    dotenvy::dotenv().ok();
+
     let tx_hash = std::env::args().nth(1)
         .expect("Usage: zarqa <tx_hash>");
 
