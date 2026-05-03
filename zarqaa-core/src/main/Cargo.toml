@@ -1,15 +1,15 @@
 [package]
-name = "zarqa"
+name = "zarqaa"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "zarqa"
+name = "zarqaa"
 path = "src/main.rs"
 
 [dependencies]
-zarqa-types    = { path = "../types" }
-zarqa-adapters = { path = "../adapters" }
+zarqaa-types    = { path = "../types" }
+zarqaa-adapters = { path = "../adapters" }
 tokio          = { workspace = true }
 serde_json     = { workspace = true }
 dotenvy        = "0.15"

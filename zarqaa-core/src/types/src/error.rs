@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ZarqaError {
+pub enum ZarqaaError {
     #[error("TX hash not found: {0}")]
     TxNotFound(String),
     #[error("RPC error: {0}")]
@@ -36,21 +36,21 @@ pub enum ZarqaError {
     Internal(String),
 }
 
-impl ZarqaError {
+impl ZarqaaError {
     pub fn reason_code(&self) -> &'static str {
         match self {
-            ZarqaError::TxNotFound(_)           => "UNRESOLVABLE_TX_HASH",
-            ZarqaError::RpcTimeout { .. }       => "RPC_TIMEOUT",
-            ZarqaError::TraceUnavailable        => "TRACE_UNAVAILABLE",
-            ZarqaError::ChainNotSupported(_)    => "CHAIN_NOT_SUPPORTED",
-            ZarqaError::StageNotApplicable {..} => "STAGE_NOT_APPLICABLE",
-            ZarqaError::InvalidAddress {..}     => "ADDRESS_FORMAT_INVALID",
-            ZarqaError::SourceNotVerified {..}  => "SOURCE_NOT_VERIFIED",
-            ZarqaError::ExplorerRateLimited     => "EXPLORER_RATE_LIMITED",
-            ZarqaError::IntentUnresolvable(_)   => "INTENT_UNRESOLVABLE",
+            ZarqaaError::TxNotFound(_)           => "UNRESOLVABLE_TX_HASH",
+            ZarqaaError::RpcTimeout { .. }       => "RPC_TIMEOUT",
+            ZarqaaError::TraceUnavailable        => "TRACE_UNAVAILABLE",
+            ZarqaaError::ChainNotSupported(_)    => "CHAIN_NOT_SUPPORTED",
+            ZarqaaError::StageNotApplicable {..} => "STAGE_NOT_APPLICABLE",
+            ZarqaaError::InvalidAddress {..}     => "ADDRESS_FORMAT_INVALID",
+            ZarqaaError::SourceNotVerified {..}  => "SOURCE_NOT_VERIFIED",
+            ZarqaaError::ExplorerRateLimited     => "EXPLORER_RATE_LIMITED",
+            ZarqaaError::IntentUnresolvable(_)   => "INTENT_UNRESOLVABLE",
             _                                   => "INTERNAL_ERROR",
         }
     }
 }
 
-pub type Result<T> = std::result::Result<T, ZarqaError>;
+pub type Result<T> = std::result::Result<T, ZarqaaError>;

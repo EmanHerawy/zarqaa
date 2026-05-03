@@ -6,8 +6,8 @@ pub mod rpc;
 use config::EvmChainConfig;
 use explorer::ExplorerClient;
 use rpc::EvmRpcClient;
-use zarqa_types::error::Result;
-use zarqa_types::report::{ChainAddress, LegReport, Verdict};
+use zarqaa_types::error::Result;
+use zarqaa_types::report::{ChainAddress, LegReport, Verdict};
 
 pub struct EvmAdapter {
     rpc: EvmRpcClient,

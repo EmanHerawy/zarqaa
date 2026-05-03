@@ -1,6 +1,6 @@
 use reqwest::Client;
 use serde::Deserialize;
-use zarqa_types::error::{Result, ZarqaError};
+use zarqaa_types::error::{Result, ZarqaaError};
 
 // Etherscan's envelope: status "1" = success, "0" = error.
 //
@@ -58,16 +58,16 @@ impl ExplorerClient {
             if resp.message.to_lowercase().contains("rate")
                 || resp.result.as_str().map(|s| s.to_lowercase().contains("rate")).unwrap_or(false)
             {
-                return Err(ZarqaError::ExplorerRateLimited);
+                return Err(ZarqaaError::ExplorerRateLimited);
             }
             let detail = resp.result.as_str().unwrap_or(&resp.message).to_string();
-            return Err(ZarqaError::ExplorerApi(detail));
+            return Err(ZarqaaError::ExplorerApi(detail));
         }
 
         // Status is "1" — result is now safe to parse as an array
         let items: Vec<SourceResult> = serde_json::from_value(resp.result)?;
         let result = items.into_iter().next()
-            .ok_or_else(|| ZarqaError::ExplorerApi("empty result array".to_string()))?;
+            .ok_or_else(|| ZarqaaError::ExplorerApi("empty result array".to_string()))?;
 
         let verified = result.abi != "Contract source code not verified";
         let name = if verified { Some(result.contract_name) } else { None };

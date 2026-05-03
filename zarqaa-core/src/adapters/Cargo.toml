@@ -1,10 +1,10 @@
 [package]
-name = "zarqa-adapters"
+name = "zarqaa-adapters"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-zarqa-types = { path = "../types" }
+zarqaa-types = { path = "../types" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

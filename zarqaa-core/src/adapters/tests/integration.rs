@@ -3,14 +3,14 @@
 // Keys are loaded automatically from zarqaa-core/.env — no manual export needed.
 //
 // Run with:
-//   cargo test -p zarqa-adapters -- --ignored
+//   cargo test -p zarqaa-adapters -- --ignored
 //
 // These tests hit real mainnet data. The tx hashes used are from confirmed
 // blocks and will never change, so the assertions are stable.
 
 use std::sync::OnceLock;
-use zarqa_adapters::{EvmAdapter, EvmChainConfig};
-use zarqa_types::report::Verdict;
+use zarqaa_adapters::{EvmAdapter, EvmChainConfig};
+use zarqaa_types::report::Verdict;
 
 // OnceLock ensures dotenvy is called exactly once even when tests run in parallel.
 // Without this, two tests could race on std::env::set_var which is not thread-safe.

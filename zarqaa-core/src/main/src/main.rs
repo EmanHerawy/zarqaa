@@ -1,5 +1,5 @@
-use zarqa_adapters::{EvmAdapter, EvmChainConfig};
-use zarqa_types::report::RouteReport;
+use zarqaa_adapters::{EvmAdapter, EvmChainConfig};
+use zarqaa_types::report::RouteReport;
 
 // `#[tokio::main]` turns our async fn main into a real main by setting up
 // the tokio runtime. Without this, you can't use .await anywhere in main.
@@ -9,7 +9,7 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     let tx_hash = std::env::args().nth(1)
-        .expect("Usage: zarqa <tx_hash>");
+        .expect("Usage: zarqaa <tx_hash>");
 
     let config = EvmChainConfig::ethereum_from_env();
     let adapter = EvmAdapter::new(config);
@@ -48,10 +48,10 @@ async fn main() {
 
     for (i, leg) in legs.iter().enumerate() {
         let icon = match leg.verdict {
-            zarqa_types::report::Verdict::Green      => "🟢",
-            zarqa_types::report::Verdict::Amber      => "🟡",
-            zarqa_types::report::Verdict::Red        => "🔴",
-            zarqa_types::report::Verdict::Unverified => "⬜",
+            zarqaa_types::report::Verdict::Green      => "🟢",
+            zarqaa_types::report::Verdict::Amber      => "🟡",
+            zarqaa_types::report::Verdict::Red        => "🔴",
+            zarqaa_types::report::Verdict::Unverified => "⬜",
         };
         println!("  {} Leg {} — {}", icon, i + 1, leg.address);
         for note in &leg.notes {

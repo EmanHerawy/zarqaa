@@ -1,7 +1,7 @@
 use alloy::primitives::{Address, B256, U256};
 use alloy::providers::{Provider, ProviderBuilder};
-use zarqa_types::error::{Result, ZarqaError};
-use zarqa_types::report::ChainAddress;
+use zarqaa_types::error::{Result, ZarqaaError};
+use zarqaa_types::report::ChainAddress;
 
 // Represents one node in the call tree returned by debug_traceTransaction.
 // Each frame is one contract call; `calls` are the inner calls it made.
@@ -43,7 +43,7 @@ impl EvmRpcClient {
 
     fn provider(&self) -> Result<impl Provider> {
         let url = self.rpc_url.parse()
-            .map_err(|e| ZarqaError::Internal(format!("{e}")))?;
+            .map_err(|e| ZarqaaError::Internal(format!("{e}")))?;
         Ok(ProviderBuilder::new().connect_http(url))
     }
 
@@ -57,7 +57,7 @@ impl EvmRpcClient {
     // tx.to + receipt log emitters. Incomplete but better than hard-failing.
     pub async fn resolve_tx_path(&self, tx_hash: &str) -> Result<Vec<ChainAddress>> {
         let hash: B256 = tx_hash.parse()
-            .map_err(|_| ZarqaError::TxNotFound(tx_hash.to_string()))?;
+            .map_err(|_| ZarqaaError::TxNotFound(tx_hash.to_string()))?;
 
         let provider = self.provider()?;
 
@@ -67,10 +67,10 @@ impl EvmRpcClient {
                 (hash, serde_json::json!({ "tracer": "callTracer" })),
             )
             .await
-            .map_err(|e| ZarqaError::Rpc(e.to_string()))?;
+            .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
 
         let root: CallFrame = serde_json::from_value(trace)
-            .map_err(|e| ZarqaError::Internal(format!("trace parse failed: {e}")))?;
+            .map_err(|e| ZarqaaError::Internal(format!("trace parse failed: {e}")))?;
 
         let mut seen = std::collections::HashSet::new();
         let mut addresses = Vec::new();
@@ -91,13 +91,13 @@ impl EvmRpcClient {
         const SLOT: &str = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 
         let addr: Address = address.parse()
-            .map_err(|_| ZarqaError::Internal(format!("invalid address: {address}")))?;
+            .map_err(|_| ZarqaaError::Internal(format!("invalid address: {address}")))?;
         let slot: B256 = SLOT.parse()
-            .map_err(|_| ZarqaError::Internal("bad slot constant".to_string()))?;
+            .map_err(|_| ZarqaaError::Internal("bad slot constant".to_string()))?;
 
         let provider = self.provider()?;
         let raw = provider.get_storage_at(addr, slot.into()).await
-            .map_err(|e| ZarqaError::Rpc(e.to_string()))?;
+            .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
 
         if raw == U256::ZERO {
             return Ok(None);
