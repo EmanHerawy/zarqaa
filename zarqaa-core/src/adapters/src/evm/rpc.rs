@@ -1,7 +1,10 @@
 use alloy::primitives::{Address, B256, U256};
 use alloy::providers::{Provider, ProviderBuilder};
+use std::time::Duration;
 use zarqaa_types::error::{Result, ZarqaaError};
 use zarqaa_types::report::ChainAddress;
+
+const RPC_TIMEOUT: Duration = Duration::from_secs(30);
 
 // Represents one node in the call tree returned by debug_traceTransaction.
 // Each frame is one contract call; `calls` are the inner calls it made.
@@ -61,13 +64,20 @@ impl EvmRpcClient {
 
         let provider = self.provider()?;
 
-        let trace: serde_json::Value = provider
-            .raw_request(
+        tracing::debug!(tx_hash, "calling debug_traceTransaction");
+
+        let trace: serde_json::Value = tokio::time::timeout(
+            RPC_TIMEOUT,
+            provider.raw_request(
                 "debug_traceTransaction".into(),
                 (hash, serde_json::json!({ "tracer": "callTracer" })),
-            )
-            .await
-            .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
+            ),
+        )
+        .await
+        .map_err(|_| ZarqaaError::Rpc(format!("debug_traceTransaction timed out after {RPC_TIMEOUT:?}")))?
+        .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
+
+        tracing::debug!(tx_hash, "trace received, parsing call tree");
 
         let root: CallFrame = serde_json::from_value(trace)
             .map_err(|e| ZarqaaError::Internal(format!("trace parse failed: {e}")))?;
@@ -96,8 +106,13 @@ impl EvmRpcClient {
             .map_err(|_| ZarqaaError::Internal("bad slot constant".to_string()))?;
 
         let provider = self.provider()?;
-        let raw = provider.get_storage_at(addr, slot.into()).await
-            .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
+        let raw = tokio::time::timeout(
+            RPC_TIMEOUT,
+            provider.get_storage_at(addr, slot.into()),
+        )
+        .await
+        .map_err(|_| ZarqaaError::Rpc(format!("get_storage_at timed out after {RPC_TIMEOUT:?}")))?
+        .map_err(|e| ZarqaaError::Rpc(e.to_string()))?;
 
         if raw == U256::ZERO {
             return Ok(None);

@@ -1,4 +1,5 @@
 use axum::{extract::State, http::StatusCode, Json};
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use zarqaa_types::report::RouteReport;
 
@@ -40,7 +41,7 @@ pub async fn analyze(
         }
     };
 
-    tracing::info!(tx_hash = %req.tx_hash, chain = %req.chain, "analyzing transaction");
+    tracing::info!(tx_hash = %req.tx_hash, chain = %req.chain, "resolving legs");
 
     let addresses = match adapter.resolve_legs(&req.tx_hash).await {
         Ok(a) => a,
@@ -56,10 +57,11 @@ pub async fn analyze(
         }
     };
 
-    let mut legs = Vec::new();
-    for addr in &addresses {
-        legs.push(adapter.analyze_leg(addr).await);
-    }
+    tracing::info!(tx_hash = %req.tx_hash, legs = addresses.len(), "analyzing legs concurrently");
+
+    // Analyze all legs in parallel — each leg makes 3 network calls (Etherscan,
+    // proxy slot read, feeds), so sequential would be legs × 3 serial calls.
+    let legs = join_all(addresses.iter().map(|addr| adapter.analyze_leg(addr))).await;
 
     let route_verdict = RouteReport::compute_verdict(&legs);
 
